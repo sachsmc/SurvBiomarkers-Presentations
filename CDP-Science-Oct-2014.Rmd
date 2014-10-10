@@ -337,12 +337,12 @@ ggplot(tour2, aes(x = FPF, y = TPF, color = Marker)) + geom_path() + geom_abline
 
 ## 
 
-<iframe src="http://sachsmc.shinyapps.io/illustrateROC/"></iframe>
+<iframe src="https://sachsmc.shinyapps.io/illustrateROC/"></iframe>
 
 
 ## Make your own ROC Curves
 
-http://brbweb1.nci.nih.gov:3838/plotROC/
+https://brbweb1.nci.nih.gov:3838/plotROC/
 
 Still a work in progress. 
 
