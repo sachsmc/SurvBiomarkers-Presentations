@@ -1,49 +1,64 @@
 shinyServer(function(input, output) {
-  
-  
+
+  library(ggplot2)
+  library(ggthemes)
+
+  rocme <- function(T, D){
+
+    c <- sort(T)
+    TPF <- sapply(c, function(x) mean(T[D == 1] > x))
+    FPF <- sapply(c, function(x) mean(T[D == 0] > x))
+
+    data.frame(cbind(c, TPF, FPF))
+
+  }
+
+
+
   dataset <- reactive({
-    
-    meandiff <- as.numeric(input$quality)
-    data.frame(D0 = rnorm(250, mean = 0), D1 = rnorm(250, mean = meandiff))
-    
+
+    D <- rbinom(250, 1, .5)
+    T <- rnorm(250, mean = D * as.numeric(input$quality), sd = 1)
+    data.frame(D = D, T = T)
+
+
   })
-  
+
   output$density_plot <- renderPlot({
-    
-    plot(density(dataset()$D0), xlab = "Biomarker Value", ylab = "Density", main = "", col = "red", lwd = 2, 
-         xlim = c(min(dataset()), max(dataset())), ylim = c(0, .5))
-    lines(density(dataset()$D1), col = "blue", lwd = 2)
-    abline(v = input$thresh, lty = 2)
-    
+
+
+    ggplot(dataset(), aes(x = T, color = ifelse(D == 1, "diseased", "healthy"))) + geom_density() + theme_igray() + scale_color_colorblind("Status") +
+      scale_x_continuous("Biomarker value") + geom_vline(xintercept = input$thresh, lty = 2)
+
+
   })
-  
+
   output$roc_plot <- renderPlot({
-    
-    cuts <- sort(unique(c(dataset()$D0, dataset()$D1, input$thres)))
-    tpr <- sapply(cuts, function(x) mean(dataset()$D1 > x))
-    fpr <- sapply(cuts, function(x) mean(dataset()$D0 > x))
-    
-    tpr.thresh <- mean(dataset()$D1 > input$thresh)
-    fpr.thresh <- mean(dataset()$D0 > input$thresh)
-    
-    plot(tpr ~ fpr, type = 'l', xlab = "1 - Specificity", ylab = "Sensitivity", xlim = c(0, 1), ylim = c(0,1), lwd = 2)
-    lines(tpr.thresh ~ fpr.thresh, type = 'p', col = "green",  pch = 20, cex = 2)
-    text(fpr.thresh + .05, tpr.thresh, paste("c =", round(input$thresh, 1)), pos = 1)
-    abline(0, 1, lty = 2)
-    
+
+    tour <- rocme(dataset()$T, dataset()$D)
+    tpoint2 <- tour[tour$c >= input$thresh,, drop = FALSE][1,]
+
+    ggplot(tour, aes(x = FPF, y = TPF)) + geom_path() + geom_abline(intercept = 0, slope = 1, lty = 2) + theme_igray() +
+      scale_x_continuous("False positive fraction at c") + scale_y_continuous("True positive fraction at c") +
+      geom_point(data = tpoint2, aes(x = FPF, y = TPF), color = "green") +
+      geom_text(data = tpoint2, aes(x = FPF, y = TPF, label = round(c, 2)), hjust = 0, vjust = 1)
+
   })
-  
+
   output$mary <- renderUI({
-    
-    sens.thresh <- mean(dataset()$D1 > input$thresh)
-    spec.thresh <- mean(dataset()$D0 < input$thresh)
-    auc <- mean(outer(dataset()$D1, dataset()$D0, FUN = ">"))
-    
-    h5(list(sprintf("Threshold: %.2f", input$thresh), br(),
-            sprintf("Sensitivity: %.2f", sens.thresh), br(),
-            sprintf("Specificity: %.2f", spec.thresh), br(),
+
+    tour <- rocme(dataset()$T, dataset()$D)
+    tpoint2 <- tour[tour$c >= input$thresh,, drop = FALSE][1,]
+
+    D1 <- subset(dataset(), D == 1)
+    D0 <- subset(dataset(), D == 0)
+    auc <- mean(outer(D1$T, D0$T, FUN = ">"))
+
+    h5(list(sprintf("Threshold: %.2f", tpoint2[1]), br(),
+            sprintf("True positive fraction: %.2f", tpoint2[2]), br(),
+            sprintf("False positive fraction: %.2f", tpoint2[3]), br(),
             sprintf("AUC: %.2f", auc)))
-    
+
   })
-  
+
 })

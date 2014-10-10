@@ -1,43 +1,366 @@
 ---
-title: "Evaluating Biomarkers for Time-to-Event Outcomes"
+title: "Evaluating Biomarkers: Connecting the Theory to Practice"
 author: "Michael Sachs"
-date: "Tuesday, April 08, 2014"
-output: ioslides_presentation
-widescreen: true
-smaller: true
+date: October 30, 2014
+output: 
+  ioslides_presentation:
+    self_contained: false
+    widescreen: true
+    fig_width: 8
+    fig_height: 4
+    logo: US-NIH-NCI-Logo.svg
+    css: styles.css
 ---
 
-## Background 
-### Accuracy for binary outcome, binary biomarker
+# Introduction
 
-~ | Disease | Healthy | Total
---- | -----------| -------- | -----
- High Risk | True Positive | False Positive | Positive Predictive Value 
- Low Risk | False Negative | True Negative | Negative Predictive Value
- Total | True Positive Rate | True Negative Rate | Accuracy
+## Evaluating Biomarkers: Practice
 
-## Continuous biomarker
-<iframe src="http://127.0.0.1:3838"></iframe>
-
-## Time-to-event outcome
-
-```{r, fig.align ='center', echo = FALSE, message = FALSE}
-library(survival)
-
-Rmod <- sample(c("High", "Low"), 400, replace = TRUE)
-survben <- rexp(400, ifelse(Rmod== "High", 1, 2))
-plot(survfit(Surv(survben, rep(1, 400)) ~ Rmod), col = c("maroon", "darkblue"), ylab = "Survival", xlab = "Years")
-legend("topright", fill = c("maroon", "darkblue"), legend = c("Low risk", "High risk"))
+```{r libs, include = FALSE}
+library(ggplot2)
+library(plyr)
+library(ggthemes)
 ```
+
+
+
+```{r plot3, echo = FALSE, fig.width = 5, fig.height = 5, fig.align = 'center', warning = FALSE}
+D <- rbinom(250, 1, .3)
+T <- rnorm(250, mean = D, sd = .75)
+  
+c <- sort(T)
+TPF <- sapply(c, function(x) mean(T[D == 1] > x))
+FPF <- sapply(c, function(x) mean(T[D == 0] > x))
+
+badroc <- data.frame(cbind(c, TPF, FPF))
+
+plot(TPF ~ FPF, badroc, lwd = 2, xlab = "1 - specificity", ylab = "sensitivity", type = 's', xaxp = c(0, 1, 2), yaxp = c(0, 1, 2))
+legend("bottomright", lwd = 2, lty = 1, legend = "Great new marker\n AUC = .79; p < 0.001")
+```
+
+## Evaluating Biomarkers: Practice
+
+```{r plot2, echo = FALSE, fig.width = 6, fig.align = 'center', warning = FALSE}
+df <- data.frame(Time = c(rexp(50, .1), rexp(50, 2), rexp(50, 4), rexp(50, 3)), 
+                 Biomarker = c(rep("Below median", 100), rep("Above median", 100)), 
+                 Treatment = rep(c(rep("Experimental", 50), rep("Placebo", 50)), 2))
+
+
+df <- ddply(df, ~ Biomarker, function(d){
+  
+  data.frame(Time = d$Time, Survival = (nrow(d):1/nrow(d))[rank(d$Time, ties.method = "first")])
+  
+})
+
+ggplot(df, aes(x = Time, y = Survival, color = Biomarker)) + scale_x_continuous(limits = c(0, 10)) +
+  geom_step() + theme_igray() 
+
+```
+* p < 0.001
+
+
+## Evaluating Biomarkers: Practice
+
+```{r plot1, echo = FALSE, fig.align='center', warning=FALSE}
+
+df <- data.frame(Time = c(rexp(50, .1), rexp(50, 2), rexp(50, 4), rexp(50, 3)), 
+                 Biomarker = c(rep("Below median", 100), rep("Above median", 100)), 
+                 Treatment = rep(c(rep("Experimental", 50), rep("Placebo", 50)), 2))
+
+df <- ddply(df, ~ Biomarker + Treatment, function(d){
+  
+  data.frame(Time = d$Time, Survival = (nrow(d):1/nrow(d))[rank(d$Time, ties.method = "first")])
+  
+})
+
+ggplot(df, aes(x = Time, y = Survival, color = Treatment)) + scale_x_continuous(limits = c(0, 10)) +
+  geom_step() + theme_igray() + scale_color_colorblind() + facet_wrap(~Biomarker)
+```
+* p < 0.001
+
+
+
+## Evaluating Biomarkers: Theory
+
+
+Search Term | Results
+-----------|-------------
+Clinical Trial(s) | 926
+Survival | 714
+Longitudinal | 634
+**(Bio)marker(s)** | **228**
+Gene/Genomic(s) | 180
+
+
+Search results from pubmed restricted to journals: _Statistics in Medicine, Biometrics, Biostatistics, Biometrical Journal_
+
+
+## About me and the BRB
+
+Responsibilities:
+
+  - Provide statistical leadership to programs in the CDP
+  - Conduct research in Biostatistics
+      + Not quite mathematics
+      + Not quite epidemiology
+      + Methods are intended to be used/understood by statisticians and non-statisticians
+
+**Much of the published statistical research will never be used in practice.**
+
+## Why?
+
+  - Lack of awareness
+  - Lack of useful tools to implement the research
+  
+**Greater impact through software and education**
+ 
+Some of my efforts on this front can be found here:
+
+http://sachsmc.github.io
+ 
 
 ## Goals
 
-  - Review methods for assessing accuracy of continuous biomarkers for prognosis of time-to-event outcomes
-  - Incorporate all available information
+ - Review statistical methods for evaluating biomarkers
+ - Review practical needs of scientists evaluating biomarkers
+ - Examine how the two intersect
+ - Provide resources for using non-standard methods
+
+## Uses of biomarkers/imaging tests in oncology
+
+  - Screening (mammography, HPV test)
+  - Diagnosis (HER-2, PSA)
+  - Prognosis, predicting future recurrence (Oncotype, Mammaprint)
+  - Treatment selection (ER, ALK, KRAS)
   
-### Outline
+[Source (cancer.gov)](http://www.cancer.gov/cancertopics/factsheet/detection/tumor-markers)  
+ 
+# The Basics
+
+## Biomarker statistics 101
+
+Binary biomarker and Binary outcome
+
+<style>
+td { border: 1px #aaa solid;
+     padding: .2em; 
+     }
+</style>
+
+<table align="center" style="text-align:center; border:1px; background:transparent; font-size: medium;">
+<tr>
+<td colspan="2" style="border:none;"></td>
+<td colspan="2" style="background:#eeeebb;"><b>Condition<br />
+(as determined by "Gold standard")</b></td>
+</tr>
+<tr>
+<td style="border:none;"></td>
+<td style="background:#ddddcc;">Total population</td>
+<td style="background:#ffffcc;">Condition positive</td>
+<td style="background:#ddddaa;">Condition negative</td>
+<td style="background:#ddddcc;">Prevalence =<br />
+Σ&#160;Condition positive
+<div style="border-top:1px solid;">Σ&#160;Total population</div>
+</td>
+</tr>
+<tr>
+<td rowspan="2" style="background:#bbeeee;"><b>Test<br />
+outcome</b></td>
+<td style="background:#ccffff;">Test<br />
+outcome<br />
+positive</td>
+<td style="background:#ccffcc;"><span style="color:#006600;"><b>True positive</b></span></td>
+<td style="background:#eedddd;"><span style="color:#cc0000;"><b>False positive</b></span><br />
+</td>
+<td style="background:#ccffff;"> Positive predictive value (PPV) =<br />
+Σ True positive
+<div style="border-top:1px solid;">Σ&#160;Test&#160;outcome&#160;positive</div>
+</td>
+</tr>
+<tr>
+<td style="background:#aadddd;">Test<br />
+outcome<br />
+negative</td>
+<td style="background:#eedddd;"><span style="color:#cc0000;"><b>False negative</b></span><br />
+</td>
+<td style="background:#bbeebb;"><span style="color:#006600;"><b>True negative</b></span></td>
+<td style="background:#aadddd;">Negative predictive value (NPV) =<br />
+Σ True negative
+<div style="border-top:1px solid;">Σ&#160;Test&#160;outcome&#160;negative</div>
+</td>
+</tr>
+<tr>
+<td style="border:none;"></td>
+<td style="border:none;"></td>
+<td style="background:#ffffcc;">True positive fraction (TPF, Sensitivity) =<br />
+Σ True positive
+<div style="border-top:1px solid;">Σ&#160;Condition&#160;positive</div>
+</td>
+<td style="background:#ddddaa;">False positive fraction (FPF) =<br />
+Σ False positive
+<div style="border-top:1px solid;">Σ&#160;Condition&#160;negative</div>
+</td>
+<td style="background:#ddddcc;">Accuracy (ACC) =<br />
+Σ&#160;True positive + Σ True negative
+<div style="border-top:1px solid;">Σ&#160;Total population</div>
+</td>
+</tr>
+<tr>
+<td style="border:none;"></td>
+<td style="border:none;"></td>
+<td style="background:#ffffcc;">False negative fraction (FNF) =<br />
+Σ False negative
+<div style="border-top:1px solid;">Σ&#160;Condition&#160;positive</div>
+</td>
+<td style="background:#ddddaa;">True negative fraction</a> (TNF, Specificity) =<br />
+Σ True negative
+<div style="border-top:1px solid;">Σ&#160;Condition&#160;negative</div>
+</td>
+</tr>
+<tr>
+<td style="border:none;"></td>
+</tr>
+</table>
+
+## Probabilities and Proportions
+
+**Quality of test-based classifications:**
+
+$$ TPF = Pr\{\mbox{Marker positive} | \mbox{Has condition} \} = Pr\{M = 1 | D = 1\} $$
+
+$$ FPF = Pr\{M = 1 | D = 0 \} $$ 
+
+Ideal: TPF = 1, FPF = 0; Bad: TPF = FPF
+
+**Predictions**
+
+$$ PPV = Pr\{D = 1 | M = 1\} $$
+
+$$ NPV = Pr\{D = 0 | M = 0\} $$
+ 
+Ideal: PPV = NPV = 1; Bad: PPV = $Pr\{D = 1\}$; NPV = $Pr\{D = 0\}$
+ 
+## Aside: terminology
+
+ - Sensitivity = <emph class="blue">True</emph> <emph class="red">positive</emph> fraction
+ - Specificity = 1 - <emph class="blue">False</emph> <emph class="red">positive</emph> fraction
+ - $Pr\{\color{red}{M = 1} | \color{blue}{D = 1}\}$
+ - $Pr\{\color{red}{M = 1} | \color{blue}{D = 0}\}$
+ 
+### You may also see FPR/TPR for false/true positive **rate**. 
+### These are probabilities or proportions, not rates. 
+ 
+ 
+## Examples
+
+> Approximately 50% of women screened annually for 10 years in the United States will experience abnormal mammogram but have no cancer
+
+> Mammograms miss about 20 percent of breast cancers that are present at the time of screening
+
+[Source (cancer.gov)](http://www.cancer.gov/cancertopics/factsheet/detection/mammograms)
+
+> - What is the population under study (general)? 
+> - What does the test do? 
+> - What sub-population does the statistic apply to? (Test +, test -, healthy, diseased)
+
+## One statistic not enough
+
+**All of the information in that table can be obtained given only 3 of the quantities: **
+
+ - Usually, $(TPF, FPF, Pr\{D = 1\})$
+ - Occassionally, $(PPV, NPV, Pr\{M = 1\})$
+
+Why? Bayes Rule:
+
+$$ Pr\{M = 1 | D = 1\} = \frac{Pr\{M = 1 \mbox{ AND } D = 1\}}{Pr\{D = 1\}} = \frac{Pr\{D = 1 | M = 1\} Pr\{M = 1\}}{Pr\{D = 1\}} $$
+ 
+ - Most commonly, only a HR or OR is reported
+ - HR/OR are insufficient to evaluate the accuracy of a test ([Pepe et al. 2004 AJE](http://aje.oxfordjournals.org/content/159/9/882.short))
+
+
+
+## Extension 1
+
+What if the test yields a continuous measurement?
+
+```{r mamm, echo = FALSE, warning = FALSE, message = FALSE}
+contex <- data.frame(Result = c(exp(rnorm(250)), rbinom(250, 1, .15)), Test = c(rep("Prostate specific antigen", 250), rep("Mammogram", 250)))
+ggplot(contex, aes(x = Result)) + geom_bar(stat = "bin") + facet_wrap(~ Test, scales = "free") + theme_igray() + scale_color_colorblind()
+```
+
+## Solutions
+
+### Goal is to assess accuracy using the aforementioned measures
+
+> - Pick an arbitrary cutoff, say $c$. 
+> - Now *test positive* is defined as $M > c$
+> - Consider measures as functions of $c$, i.e.
+    $$ TPF(c) = Pr\{M > c | D = 1\} $$
+    $$ FPF(c) = Pr\{M > c | D = 0\} $$
+    
+## ROC Curve
+
+```{r roctour, fig.width = 5, fig.height = 5, fig.align = 'center', echo = FALSE}
+D <- rbinom(250, 1, .3)
+M <- rnorm(250, mean = D, sd = .75)
+
+rocme <- function(M, D){
   
-  1. Estimands, time dependent measures of accuracy
-  2. Modeling approaches and estimation
-  3. Resources for applied use
-  4. Extensions and active areas of research 
+c <- sort(M)
+TPF <- sapply(c, function(x) mean(M[D == 1] > x))
+FPF <- sapply(c, function(x) mean(M[D == 0] > x))
+
+data.frame(cbind(c, TPF, FPF))
+
+}
+
+tour <- rocme(M, D)
+ggplot(tour, aes(x = FPF, y = TPF)) + geom_path() + geom_abline(intercept = 0, slope = 1, lty = 2) + theme_igray() + 
+  scale_x_continuous("False positive fraction at c") + scale_y_continuous("True positive fraction at c") + 
+  annotate("text", x = .5, y = .5, label = "Reference line", hjust = 0, vjust = 1)
+```
+
+## Comparing ROC Curves
+
+```{r roccomp, fig.width = 7, fig.height = 5, fig.align = 'center', echo = FALSE}
+D <- rbinom(250, 1, .3)
+M1 <- rnorm(250, mean = D, sd = .75)
+M2 <- rnorm(250, mean = D, sd = 1.75)
+
+tour2 <- rbind(rocme(M1, D), rocme(M2, D))
+tour2$Marker <- c(rep("New great", 250), rep("Old bad", 250))
+
+ggplot(tour2, aes(x = FPF, y = TPF, color = Marker)) + geom_path() + geom_abline(intercept = 0, slope = 1, lty = 2) + 
+  theme_igray() + scale_color_colorblind() + 
+  scale_x_continuous("False positive fraction at c") + scale_y_continuous("True positive fraction at c") 
+```
+
+## 
+
+<iframe src="http://sachsmc.shinyapps.io/illustrateROC/"></iframe>
+
+
+## Make your own ROC Curves
+
+http://brbweb1.nci.nih.gov:3838/plotROC/
+
+Still a work in progress. 
+
+## Extension 2
+
+  - Binary outcome, good for diagnosis, screening
+  - What about prognostic/predictive biomarkers?
+  - Outcome of interest is *time to event*, i.e. PFS or OS
+  - Instead of $D = 1$ we have $T > t$
+  
+```{r surv, fig.height = 3, fig.width = 5, echo = FALSE, fig.align = 'center'}
+ggplot(data.frame(T = sort(exp(rnorm(100, mean = 1, sd = .2)))), aes(x = T, y = 1 - seq_along(T)/100)) + geom_step() + 
+  scale_x_continuous("Time to progression") +
+  scale_y_continuous("Proportion progression free") + theme_igray()
+```
+  
+    
+    
+    
+
+
