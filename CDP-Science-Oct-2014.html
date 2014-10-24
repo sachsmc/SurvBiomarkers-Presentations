@@ -514,9 +514,9 @@ True negative fraction</a> (TNF, Specificity) =<br /> Σ True negative
 
 </article></slide><slide class=''><hgroup><h2>Make your own ROC Curves</h2></hgroup><article  id="make-your-own-roc-curves">
 
-<p><a href='https://brbweb1.nci.nih.gov:3838/plotROC/' title=''>https://brbweb1.nci.nih.gov:3838/plotROC/</a></p>
+<p><a href='http://sachsmc.shinyapps.io/plotROC/' title=''>http://sachsmc.shinyapps.io/plotROC/</a></p>
 
-<p>Still a work in progress.</p>
+<p>Send me your feedback.</p>
 
 </article></slide><slide class=''><hgroup><h2>Extension 2</h2></hgroup><article  id="extension-2">
 
@@ -527,7 +527,65 @@ True negative fraction</a> (TNF, Specificity) =<br /> Σ True negative
 <li>Instead of \(D = 1\) we have \(T &gt; t\)</li>
 </ul>
 
-<p><img src="CDP-Science-Oct-2014_files/figure-html/surv.png" title="plot of chunk surv" alt="plot of chunk surv" width="480" style="display: block; margin: auto;" /></p></article></slide>
+<p><img src="CDP-Science-Oct-2014_files/figure-html/surv.png" title="plot of chunk surv" alt="plot of chunk surv" width="480" style="display: block; margin: auto;" /></p>
+
+</article></slide><slide class=''><hgroup><h2>Solutions</h2></hgroup><article  id="solutions-1">
+
+<ul class = 'build'>
+<li>Dichotomize time and proceed as binary
+
+<ul>
+<li>possibly throwing out data (censoring)</li>
+</ul></li>
+<li>Use the Kaplan-Meier estimate
+
+<ul>
+<li>Time-dependent TPF and FPF \[ TPF(c, t) = P(M &gt; c | T \leq t) \] \[ FPF(c, t) = P(M &gt; c | T &gt; t) \]</li>
+</ul></li>
+</ul>
+
+</article></slide><slide class=''><hgroup><h2>Time dependent TPF and FPF</h2></hgroup><article  id="time-dependent-tpf-and-fpf">
+
+<p>A little algebra (Bayes rule again):</p>
+
+<p>\[ TPF(c, t) = \frac{P(T \leq t | M &gt; c) P(M &gt; c)}{P(T \leq t)} \]</p>
+
+<p>The KM curve is an estimate of \(P(T &gt; t)\), combine that with the proportion of \(M &gt; c\) and we are done.</p>
+
+</article></slide><slide class=''><hgroup><h2>The plot</h2></hgroup><article  id="the-plot">
+
+<p>Show curves for a small subset of event times:</p>
+
+<p><img src="CDP-Science-Oct-2014_files/figure-html/survplot1.png" title="plot of chunk survplot" alt="plot of chunk survplot" width="480" /><img src="CDP-Science-Oct-2014_files/figure-html/survplot2.png" title="plot of chunk survplot" alt="plot of chunk survplot" width="480" /></p>
+
+</article></slide><slide class=''><hgroup><h2>Prediction/Treatment Selection</h2></hgroup><article  id="predictiontreatment-selection">
+
+<p>The Janes lab at the Fred Hutch has done lots of work in this area. <code>TreatmentSelection</code> R package, and others.</p>
+
+<img src="CDP-Science-Oct-2014_files/figure-html/intpult1.png" title="plot of chunk intpult" alt="plot of chunk intpult" width="480" /><img src="CDP-Science-Oct-2014_files/figure-html/intpult2.png" title="plot of chunk intpult" alt="plot of chunk intpult" width="480" />
+
+<p class="footnote">
+
+Janes, Holly; Brown, Marshall D; Pepe, Margaret; Huang, Ying; &quot;An Approach to Evaluating and Comparing Biomarkers for Patient Treatment Selection&quot; 2014. The International Journal of Biostatistics.
+
+</p>
+
+</article></slide><slide class=''><hgroup><h2>Planning trials</h2></hgroup><article  id="planning-trials">
+
+<p><a href='https://mdbrown.shinyapps.io/PowerSAM/' title=''>https://mdbrown.shinyapps.io/PowerSAM/</a></p>
+
+</article></slide><slide class='segue dark nobackground'><hgroup class = 'auto-fadein'><h2>Conclusion</h2></hgroup><article  id="conclusion">
+
+</article></slide><slide class=''><hgroup><h2>The tools are out there</h2></hgroup><article  id="the-tools-are-out-there">
+
+<ul>
+<li>Statistical methods and tools are available to address the tough clinical questions</li>
+<li>Don&#39;t limit to what you can do or know how to do</li>
+<li>Talk to your friendly, local statistician to find what you/your colleagues need</li>
+<li>My job is to make these more understandable and accessible</li>
+</ul>
+
+<h4><a href='mailto:michael.sachs@nih.gov' title=''>michael.sachs@nih.gov</a></h4></article></slide>
 
 
   <slide class="backdrop"></slide>

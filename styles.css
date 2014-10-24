@@ -9,3 +9,19 @@ blockquote {
 blockquote p {
   display: inline;
 }
+.footnote {
+position: absolute;
+bottom: 1.25em;
+font-size: 60%;
+width: 70%;
+left: 10em;
+}
+iframe {
+width: 100%;
+height: 520px;
+background: white;
+border: 0px solid #e6e6e6; */
+-webkit-box-sizing: border-box;
+-moz-box-sizing: border-box;
+box-sizing: border-box;
+}

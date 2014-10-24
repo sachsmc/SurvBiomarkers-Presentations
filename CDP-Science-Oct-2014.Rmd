@@ -20,6 +20,39 @@ output:
 library(ggplot2)
 library(plyr)
 library(ggthemes)
+library(survival)
+library(survivalROC)
+library(plotROC)
+
+ggkm <- function(sfit, xlabs = "Time since marker measured", ylabs = "survival probability", 
+                 ystratalabs = NULL, ystrataname = NULL, timeby = 100, 
+                 main = "Kaplan-Meier Plot", pval = TRUE, ...) {
+
+if(is.null(ystratalabs)) {
+   ystratalabs <- as.character(levels(summary(sfit)$strata))
+}
+m <- max(nchar(ystratalabs))
+if(is.null(ystrataname)) ystrataname <- "Strata"
+times <- seq(0, max(sfit$time), by = timeby)
+.df <- data.frame(time = sfit$time, n.risk = sfit$n.risk,
+    n.event = sfit$n.event, surv = sfit$surv, strata = summary(sfit, censored = T)$strata,
+    upper = sfit$upper, lower = sfit$lower)
+levels(.df$strata) <- ystratalabs
+zeros <- data.frame(time = 0, surv = 1, strata = factor(ystratalabs, levels=levels(.df$strata)),
+    upper = 1, lower = 1)
+.df <- rbind.fill(zeros, .df)
+d <- length(levels(.df$strata))
+p <- ggplot(.df, aes(time, surv, group = strata)) +
+    geom_step(aes(linetype = strata), size = 1) +
+    theme(legend.position = c(.65, .5), legend.key = element_rect(colour = NA)) +
+    labs(linetype = ystrataname) + 
+    scale_y_continuous(ylabs, limits = c(0, 1)) +
+    labs(linetype = ystrataname) 
+ 
+## Plotting the graphs
+p
+   
+}
 ```
 
 
@@ -342,9 +375,9 @@ ggplot(tour2, aes(x = FPF, y = TPF, color = Marker)) + geom_path() + geom_abline
 
 ## Make your own ROC Curves
 
-https://brbweb1.nci.nih.gov:3838/plotROC/
+http://sachsmc.shinyapps.io/plotROC/
 
-Still a work in progress. 
+Send me your feedback. 
 
 ## Extension 2
 
@@ -359,8 +392,114 @@ ggplot(data.frame(T = sort(exp(rnorm(100, mean = 1, sd = .2)))), aes(x = T, y = 
   scale_y_continuous("Proportion progression free") + theme_igray()
 ```
   
+## Solutions
+
+> - Dichotomize time and proceed as binary
+>     + possibly throwing out data (censoring)
+> - Use the Kaplan-Meier estimate 
+>     + Time-dependent TPF and FPF
+      $$ TPF(c, t) = P(M > c | T \leq t) $$
+      $$ FPF(c, t) = P(M > c | T > t) $$
+
+## Time dependent TPF and FPF
+
+A little algebra (Bayes rule again): 
+
+$$ TPF(c, t) = \frac{P(T \leq t | M > c) P(M > c)}{P(T \leq t)} $$
+
+The KM curve is an estimate of $P(T > t)$, combine that with the proportion of $M > c$ and we are done. 
+
+## The plot
+Show curves for a small subset of event times:
+
+```{r survplot, echo = FALSE, warning = FALSE, fig.width = 5, fig.height = 4}
+
+survT <- rexp(350, 1/5)
+cens <- rbinom(350, 1, .1)
+
+M <- -8 * sqrt(survT) + rnorm(350, sd = survT)
+
+marker <- factor(M < median(M), labels = c("above median", "below median"))
+
+sfit <- survfit(Surv(survT, cens) ~ marker)
+
+sroc <- lapply(c(2, 5, 10), function(t){ 
+  stroc <- survivalROC(Stime = survT, status = cens, marker = M, predict.time = t, method = "NNE", span = .25 * 350^(-.2))
+  data.frame(TPF = stroc$TP, FPF = stroc$FP, time = rep(stroc$predict.time, length(stroc$FP)))
+  })
+
+multi_ggroc(sroc, label = paste("t =", c(2, 5, 10)), label.adj.y = rep(.07, 3)) + theme_igray() + geom_abline(slope = 1, intercept = 0, col = "gray90")
+ggkm(sfit, timeby = 10) + scale_x_continuous(limits = c(0, 15)) + theme_igray() + theme(legend.position = c(.75, .25))
+
+
+```
+
+
+## Prediction/Treatment Selection
+The Janes lab at the Fred Hutch has done lots of work in this area. `TreatmentSelection` R package, and others. 
+
+
+```{r trtsel, include = FALSE, echo = FALSE, message = FALSE, warning = FALSE}
+library(TreatmentSelection)
+data(tsdata)
+trtsel.Y1 <- trtsel(event = "event", 
+                    trt = "trt", 
+                    marker = "Y1", 
+                    data = tsdata, 
+                    study.design = "randomized cohort",
+                    link = "logit", 
+                    default.trt = "trt all")
+
+trtsel.Y2_disc <- trtsel(event = "event", 
+                         trt = "trt", 
+                         marker = "Y2_disc", 
+                         data = tsdata, 
+                         study.design = "randomized cohort", 
+                         link = "logit")
+
+p1 <- plot.trtsel(trtsel.Y2_disc,
+                   main = "Discrete version of Y2", 
+                   plot.type = "risk", 
+                   ci = "vertical", 
+                   conf.bands = TRUE, 
+                   offset = 0.01, 
+                   bootstraps = 50, 
+                   trt.names = c("chemo.", "no chemo."))
+
+p2 <- plot.trtsel(trtsel.Y1, 
+            main = "Y1: Oncotype-DX-like marker", 
+            plot.type = "risk", 
+            ci = "horizontal", 
+            conf.bands = FALSE, 
+            bootstraps = 50,       #more bootstraps should be run than this in practice!
+            trt.names = c("chemo.", "no chemo."))
+```
+
+```{r intpult, fig.width = 5, fig.height = 4, echo = FALSE, message = FALSE, warning = FALSE}
+p2$plot + theme_igray() + scale_linetype_discrete("Treatment", labels = c("Chemo", "No Chemo"))
+p1$plot + theme_igray() + scale_linetype_discrete("Treatment", labels = c("Chemo", "No Chemo")) + 
+  scale_shape_discrete("Treatment", labels = c("Chemo", "No Chemo"))
+
+```
+<p class="footnote">
+Janes, Holly; Brown, Marshall D; Pepe, Margaret; Huang, Ying; "An Approach to Evaluating and
+Comparing Biomarkers for Patient Treatment Selection" 2014. The International Journal of Biostatistics.
+</p>
     
-    
-    
+## Planning trials
+
+https://mdbrown.shinyapps.io/PowerSAM/
+
+
+# Conclusion
+
+## The tools are out there
+
+  - Statistical methods and tools are available to address the tough clinical questions
+  - Don't limit to what you can do or know how to do
+  - Talk to your friendly, local statistician to find what you/your colleagues need
+  - My job is to make these more understandable and accessible
+  
+#### michael.sachs@nih.gov
 
 
