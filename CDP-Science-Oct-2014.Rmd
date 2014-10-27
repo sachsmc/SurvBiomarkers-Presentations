@@ -1,7 +1,7 @@
 ---
 title: "Evaluating Biomarkers: Connecting the Theory to Practice"
 author: "Michael Sachs"
-date: October 30, 2014
+date: October 28, 2014
 output: 
   ioslides_presentation:
     self_contained: false
@@ -317,7 +317,7 @@ $$ Pr\{M = 1 | D = 1\} = \frac{Pr\{M = 1 \mbox{ AND } D = 1\}}{Pr\{D = 1\}} = \f
 What if the test yields a continuous measurement?
 
 ```{r mamm, echo = FALSE, warning = FALSE, message = FALSE}
-contex <- data.frame(Result = c(exp(rnorm(250)), rbinom(250, 1, .15)), Test = c(rep("Prostate specific antigen", 250), rep("Mammogram", 250)))
+contex <- data.frame(Result = c(exp(rnorm(250, sd = .5)), rbinom(250, 1, .15)), Test = c(rep("Prostate specific antigen", 250), rep("Mammogram", 250)))
 ggplot(contex, aes(x = Result)) + geom_bar(stat = "bin") + facet_wrap(~ Test, scales = "free") + theme_igray() + scale_color_colorblind()
 ```
 
@@ -333,39 +333,22 @@ ggplot(contex, aes(x = Result)) + geom_bar(stat = "bin") + facet_wrap(~ Test, sc
     
 ## ROC Curve
 
-```{r roctour, fig.width = 5, fig.height = 5, fig.align = 'center', echo = FALSE}
+```{r roctour, fig.keep='none', results = 'asis', echo = FALSE, fig.width=5, fig.height=5, fig.align="center"}
 D <- rbinom(250, 1, .3)
 M <- rnorm(250, mean = D, sd = .75)
-
-rocme <- function(M, D){
-  
-c <- sort(M)
-TPF <- sapply(c, function(x) mean(M[D == 1] > x))
-FPF <- sapply(c, function(x) mean(M[D == 0] > x))
-
-data.frame(cbind(c, TPF, FPF))
-
-}
-
-tour <- rocme(M, D)
-ggplot(tour, aes(x = FPF, y = TPF)) + geom_path() + geom_abline(intercept = 0, slope = 1, lty = 2) + theme_igray() + 
-  scale_x_continuous("False positive fraction at c") + scale_y_continuous("True positive fraction at c") + 
-  annotate("text", x = .5, y = .5, label = "Reference line", hjust = 0, vjust = 1)
+troc <- ggroc(calculate_roc(M, D))
+cat(export_interactive_roc(troc + theme_igray() + geom_abline(intercept = 0, slope = 1, col = "gray90"), cutoffs = calculate_roc(M, D)$c, prefix = "a"))
 ```
 
 ## Comparing ROC Curves
 
-```{r roccomp, fig.width = 7, fig.height = 5, fig.align = 'center', echo = FALSE}
+```{r roccomp, fig.width = 7, fig.height = 5, fig.align = 'center', echo = FALSE, fig.keep="none", results="asis"}
 D <- rbinom(250, 1, .3)
 M1 <- rnorm(250, mean = D, sd = .75)
 M2 <- rnorm(250, mean = D, sd = 1.75)
 
-tour2 <- rbind(rocme(M1, D), rocme(M2, D))
-tour2$Marker <- c(rep("New great", 250), rep("Old bad", 250))
-
-ggplot(tour2, aes(x = FPF, y = TPF, color = Marker)) + geom_path() + geom_abline(intercept = 0, slope = 1, lty = 2) + 
-  theme_igray() + scale_color_colorblind() + 
-  scale_x_continuous("False positive fraction at c") + scale_y_continuous("True positive fraction at c") 
+croc <- calculate_multi_roc(data.frame(D = D, M1 = M1, M2 = M2), c("M1", "M2"), "D")
+cat(export_interactive_roc(multi_ggroc(croc) + theme_igray() + geom_abline(intercept = 0, slope = 1, col = "gray90"), cutoffs = lapply(croc, function(c) c$c), prefix = "b"))
 ```
 
 ## 
